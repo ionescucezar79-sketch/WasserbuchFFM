@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#185FA5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Brunnen">
+<title>Brunnen Tagebuch</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ══ NAV ══════════════════════════════════════ -->
+<nav class="topnav">
+  <div class="topnav-brand">
+    <div class="brand-icon">💧</div>
+    <div>
+      <div class="brand-text">Brunnen Tagebuch</div>
+      <!-- Site selector -->
+      <select id="site-selector" class="site-select" onchange="onSiteChange()"></select>
+    </div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-page="dashboard" onclick="showPage('dashboard')" data-i18n="nav_dashboard">Tablou</button>
+    <button class="nav-tab" data-page="erfassen"  onclick="showPage('erfassen')"  data-i18n="nav_new">+ Citire</button>
+    <button class="nav-tab" data-page="charts"    onclick="showPage('charts')"    data-i18n="nav_charts">Grafice</button>
+    <button class="nav-tab" data-page="sites"     onclick="showPage('sites')"     data-i18n="nav_sites">Șantiere</button>
+    <button class="nav-tab" data-page="settings"  onclick="showPage('settings')"  data-i18n="nav_settings">Setări</button>
+  </div>
+
+  <div class="topnav-right">
+    <div class="lang-switcher">
+      <button class="lang-btn active" data-lang="ro" onclick="switchLang('ro')">RO</button>
+      <button class="lang-btn"        data-lang="de" onclick="switchLang('de')">DE</button>
+    </div>
+    <div id="cloud-status" style="display:flex;align-items:center;gap:6px">
+      <div class="sync-dot" id="cloud-dot"></div>
+      <span id="cloud-label" style="font-size:11px;color:var(--muted);display:none">☁ Cloud</span>
+    </div>
+    <span id="entry-count" style="font-size:11px;color:var(--muted)">0</span>
+  </div>
+</nav>
+
+<main class="main">
+
+  <!-- Install banner -->
+  <div class="install-banner" id="install-banner">
+    <span data-i18n="install_msg">📱 Instalează aplicația...</span>
+    <button class="small primary" onclick="installApp()" data-i18n="btn_install">Instalează</button>
+    <button class="small" onclick="document.getElementById('install-banner').classList.remove('visible')">✕</button>
+  </div>
+
+  <!-- ══ DASHBOARD ══════════════════════════════ -->
+  <section class="page active" id="page-dashboard">
+    <div class="stats-grid" id="stats-grid" style="display:none"></div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title" data-i18n="title_filter">Filtru perioadă</span>
+      </div>
+      <div class="filter-bar">
+        <button class="filter-chip active" data-filter="all"   onclick="setFilter('all')"   data-i18n="filter_all">Toate</button>
+        <button class="filter-chip"        data-filter="7d"    onclick="setFilter('7d')"    data-i18n="filter_7d">7 zile</button>
+        <button class="filter-chip"        data-filter="30d"   onclick="setFilter('30d')"   data-i18n="filter_30d">30 zile</button>
+        <button class="filter-chip"        data-filter="month" onclick="setFilter('month')" data-i18n="filter_month">Luna curentă</button>
+        <button class="filter-chip"        data-filter="year"  onclick="setFilter('year')"  data-i18n="filter_year">Anul curent</button>
+        <div class="filter-date-row">
+          <span class="filter-or" data-i18n="filter_or">sau:</span>
+          <input type="date" id="filter-from" onchange="applyCustomFilter()">
+          <span class="filter-or">→</span>
+          <input type="date" id="filter-to"   onchange="applyCustomFilter()">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">
+          <span data-i18n="title_history">Istoric</span>
+          <span class="card-title-sub" data-i18n="title_history_sub">(cel mai recent în vârf)</span>
+        </span>
+        <button class="small" onclick="exportCSV()" data-i18n="btn_csv">↓ CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr id="entries-head"></tr></thead>
+          <tbody id="entries-body">
+            <tr><td colspan="4" class="empty" data-i18n="no_site_selected">← Selectează un șantier</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ ERFASSEN ═══════════════════════════════ -->
+  <section class="page" id="page-erfassen">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:1rem" data-i18n="title_new">Citire nouă</div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group">
+          <label data-i18n="label_datum">Data</label>
+          <input type="date" id="f-datum">
+        </div>
+        <div class="form-group">
+          <label data-i18n="label_uhr">Ora</label>
+          <input type="time" id="f-uhr">
+        </div>
+      </div>
+      <!-- Dynamic meter inputs rendered by JS -->
+      <div class="form-grid" id="meter-inputs-form" style="margin-bottom:12px"></div>
+      <div class="note-row">
+        <label data-i18n="label_note">Observații</label>
+        <input type="text" id="f-note" data-i18n-attr="placeholder" data-i18n="note_placeholder" placeholder="...">
+      </div>
+      <div class="btn-row">
+        <button class="primary" onclick="saveEntry()">
+          <span data-i18n="btn_save">+ Salvează</span>
+          <kbd style="font-size:10px;opacity:.6;margin-left:6px">Ctrl+↵</kbd>
+        </button>
+        <button onclick="clearForm()" data-i18n="btn_reset">Resetează</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ CHARTS ════════════════════════════════ -->
+  <section class="page" id="page-charts">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title" data-i18n="title_visible">Vizibile</span>
+        <div class="brunnen-toggle" id="brunnen-toggle"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.5rem" data-i18n="title_line">Evoluție în timp</div>
+      <div class="chart-container"><canvas id="chart-line"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.5rem" data-i18n="title_bar">Consum lunar</div>
+      <div class="chart-container"><canvas id="chart-bar"></canvas></div>
+    </div>
+  </section>
+
+  <!-- ══ ȘANTIERE ═══════════════════════════════ -->
+  <section class="page" id="page-sites">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title" data-i18n="title_sites">Administrare șantiere</span>
+        <button class="small primary" onclick="openSiteEditor(null)" data-i18n="btn_add_site">+ Adaugă șantier</button>
+      </div>
+      <div id="site-list"></div>
+    </div>
+  </section>
+
+  <!-- ══ SETTINGS ══════════════════════════════ -->
+  <section class="page" id="page-settings">
+    <!-- Auth card -->
+    <div class="card" id="auth-section">
+      <div class="card-title" style="margin-bottom:.75rem" data-i18n="auth_title">Cont Cloud</div>
+      <div id="auth-logged-out" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="primary" id="btn-login" onclick="doLogin()">
+          <span style="margin-right:6px">🔑</span><span data-i18n="btn_login">Conectare cu Google</span>
+        </button>
+        <span style="font-size:12px;color:var(--muted)" data-i18n="auth_hint">Date sincronizate pe toate dispozitivele</span>
+      </div>
+      <div id="auth-logged-in" style="display:none;align-items:center;gap:10px;flex-wrap:wrap">
+        <span id="user-info" style="font-size:13px;color:var(--text)"></span>
+        <button id="btn-logout" onclick="doLogout()" data-i18n="btn_logout" style="display:none">Deconectare</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.75rem" data-i18n="lang_label">Limbă</div>
+      <div class="lang-choice">
+        <button class="lang-choice-btn active" data-lang="ro" onclick="switchLang('ro')">
+          <span class="flag">🇷🇴</span><span>Română</span>
+        </button>
+        <button class="lang-choice-btn" data-lang="de" onclick="switchLang('de')">
+          <span class="flag">🇩🇪</span><span>Deutsch</span>
+        </button>
+      </div>
+    </div>
+    <div class="firebase-setup">
+      <strong data-i18n="firebase_title">☁ Firebase</strong>
+      <p style="margin-top:8px;line-height:1.6">
+        <span data-i18n="firebase_desc">Urmează ghidul din FIREBASE_SETUP.md.</span><br>
+        <span style="color:var(--muted)" data-i18n="firebase_note">Fără Firebase, datele sunt locale.</span>
+      </p>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:1rem" data-i18n="title_data">Date & Export</div>
+      <div class="btn-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+        <button onclick="exportCSV()" data-i18n="btn_export_all">↓ Exportă CSV</button>
+        <button class="danger" onclick="clearAll()" data-i18n="btn_delete_all">✕ Șterge toate</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.75rem" data-i18n="title_about">Despre</div>
+      <div style="font-size:13px;line-height:1.9;color:var(--muted)">
+        <div><strong style="color:var(--text)" data-i18n="about_version">Brunnen Tagebuch v3.2</strong></div>
+        <div data-i18n="about_storage">Stocare: IndexedDB</div>
+        <div data-i18n="about_pwa">PWA: Android, iOS, Windows</div>
+        <div data-i18n="about_offline">Offline: ✓</div>
+        <div style="margin-top:8px">
+          <button class="small" onclick="navigator.serviceWorker?.getRegistrations().then(r=>r.forEach(x=>x.unregister())).then(()=>caches.keys().then(k=>Promise.all(k.map(c=>caches.delete(c))))).then(()=>location.reload())" data-i18n="btn_reset_cache">↺ Cache</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ══ EDIT ENTRY MODAL ═══════════════════════ -->
+<div class="modal-backdrop" id="edit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" data-i18n="title_edit">Editează înregistrare</span>
+      <button class="modal-close" onclick="closeEdit()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group">
+          <label data-i18n="label_datum">Data</label>
+          <input type="date" id="e-datum">
+        </div>
+        <div class="form-group">
+          <label data-i18n="label_uhr">Ora</label>
+          <input type="time" id="e-uhr">
+        </div>
+      </div>
+      <div class="form-grid" id="edit-meter-inputs" style="margin-bottom:12px"></div>
+      <div class="note-row">
+        <label data-i18n="label_note">Observații</label>
+        <input type="text" id="e-note-edit" placeholder="...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="primary" onclick="saveEdit()">
+        <span data-i18n="btn_save_edit">✓ Salvează</span>
+        <kbd style="font-size:10px;opacity:.6;margin-left:6px">Ctrl+↵</kbd>
+      </button>
+      <button onclick="closeEdit()" data-i18n="btn_cancel">Anulează</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SITE EDITOR MODAL ══════════════════════ -->
+<div class="modal-backdrop" id="site-editor-modal">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <span class="modal-title" id="site-editor-title" data-i18n="title_new_site">Șantier nou</span>
+      <button class="modal-close" onclick="closeSiteEditor()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Site name -->
+      <div class="form-group" style="margin-bottom:1.25rem">
+        <label data-i18n="label_site_name">Nume șantier</label>
+        <input type="text" id="se-name" placeholder="ex: Güterplatz, Șantier Nord...">
+      </div>
+
+      <!-- Meters section -->
+      <div class="section-label" data-i18n="title_meters">Apometre</div>
+      <div id="meter-editor-list" style="margin-bottom:10px"></div>
+      <button class="small" onclick="addMeter()" data-i18n="btn_add_meter" style="margin-bottom:1rem">+ Adaugă apometru</button>
+    </div>
+    <div class="modal-footer">
+      <button class="primary" onclick="saveSiteEditor()">
+        <span data-i18n="btn_save_site">✓ Salvează șantier</span>
+      </button>
+      <button onclick="closeSiteEditor()" data-i18n="btn_cancel">Anulează</button>
+      <button id="se-delete-btn" class="danger" style="margin-left:auto;display:none"
+        onclick="deleteSiteConfirm(editingSite?.id)" data-i18n="btn_delete_site">✕ Șterge</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script type="module" src="firebase.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

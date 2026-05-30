@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#1a6fc4"/>
+      <stop offset="100%" stop-color="#0d3f73"/>
+    </linearGradient>
+    <linearGradient id="drop" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#a8d8f8" stop-opacity="0.9"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+
+  <!-- Subtle grid lines -->
+  <line x1="0" y1="170" x2="512" y2="170" stroke="white" stroke-opacity="0.06" stroke-width="1"/>
+  <line x1="0" y1="340" x2="512" y2="340" stroke="white" stroke-opacity="0.06" stroke-width="1"/>
+  <line x1="170" y1="0" x2="170" y2="512" stroke="white" stroke-opacity="0.06" stroke-width="1"/>
+  <line x1="340" y1="0" x2="340" y2="512" stroke="white" stroke-opacity="0.06" stroke-width="1"/>
+
+  <!-- Water drop shape -->
+  <path d="M256 90
+    C256 90 148 230 148 310
+    C148 368 196 415 256 415
+    C316 415 364 368 364 310
+    C364 230 256 90 256 90 Z"
+    fill="url(#drop)" filter="url(#shadow)"/>
+
+  <!-- Inner shine -->
+  <ellipse cx="225" cy="260" rx="28" ry="50"
+    fill="white" fill-opacity="0.25" transform="rotate(-20 225 260)"/>
+
+  <!-- Small reflection dot -->
+  <circle cx="220" cy="230" r="12" fill="white" fill-opacity="0.35"/>
+</svg>
